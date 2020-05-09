@@ -57,7 +57,7 @@
 /* Public variables ----------------------------------------------------------*/
 volatile uint8_t DataLoggerActive = 0;
 volatile uint32_t SensorsEnabled = 0;
-uint8_t Enabled6X = 0;
+uint8_t Enabled6X = 1;
 
 char lib_version[35];
 int lib_version_len;
@@ -73,14 +73,12 @@ float mems_humidity;
 float mems_temperature;
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-static volatile uint8_t MagCalRequest = 0;
 static MOTION_SENSOR_Axes_t AccValue;
 static MOTION_SENSOR_Axes_t GyrValue;
 static MOTION_SENSOR_Axes_t MagValue;
 static MOTION_SENSOR_Axes_t MagOffset;
 
 static uint32_t MagTimeStamp = 0;
-
 static uint8_t MagCalStatus = 0;
 
 /* Private function prototypes -----------------------------------------------*/
@@ -100,10 +98,6 @@ static void TIM_Config(uint32_t Freq);
 static void DWT_Start(void);
 static uint32_t DWT_Stop(void);
 
-#ifdef BSP_IP_MEMS_INT1_PIN_NUM
-static void MEMS_INT1_Force_Low(void);
-static void MEMS_INT1_Init(void);
-#endif
 
 void MX_MEMS_Init(void)
 {
@@ -205,34 +199,6 @@ void RTC_TimeRegulate(uint8_t hh, uint8_t mm, uint8_t ss)
   }
 }
 
-/**
- * @brief  Gets Presentation string
- * @param  PresentationString the Presentation string
- * @param  Length the length of Presentation string
- * @retval None
- */
-void Get_PresentationString(char *PresentationString, uint32_t *Length)
-{
-  char fw_id[] = {"4"}; /* FW ID for Unicleo-GUI */
-  const uint8_t string_pointer_shift = strlen("ST MotionXX v"); /* Shift string pointer by this amount */
-  char *lib_version_num;
-  char lib_version_string[64];
-  int lib_version_len = 0;
-
-  MotionFX_manager_get_version(lib_version_string, &lib_version_len);
-
-  /* Shorten library version string (e.g.: ST MotionXX v1.0.0) to contain version number only (e.g.: 1.0.0) */
-  if (lib_version_len > string_pointer_shift)
-  {
-    lib_version_num = lib_version_string + string_pointer_shift;
-  }
-  else
-  {
-    lib_version_num = lib_version_string;
-  }
-
-  *Length = snprintf(PresentationString, 64, "MEMS shield demo,%s,%s,%s,%s", fw_id, FW_VERSION, lib_version_num, BOARD_NAME);
-}
 
 /* Private functions ---------------------------------------------------------*/
 /**
@@ -242,15 +208,6 @@ void Get_PresentationString(char *PresentationString, uint32_t *Length)
 static void MX_DataLogFusion_Init(void)
 {
   float ans_float;
-
-#ifdef BSP_IP_MEMS_INT1_PIN_NUM
-  /* Force MEMS INT1 pin of the sensor low during startup in order to disable I3C and enable I2C. This function needs
-   * to be called only if user wants to disable I3C / enable I2C and didn't put the pull-down resistor to MEMS INT1 pin
-   * on his HW setup. This is also the case of usage X-NUCLEO-IKS01A2 or X-NUCLEO-IKS01A3 expansion board together with
-   * sensor in DIL24 adapter board where the LDO with internal pull-up is used.
-   */
-  MEMS_INT1_Force_Low();
-#endif
 
   /* Initialize LED */
   BSP_LED_Init(LED2);
@@ -269,11 +226,6 @@ static void MX_DataLogFusion_Init(void)
 
   /* Initialize (disabled) Sensors */
   Init_Sensors();
-
-#ifdef BSP_IP_MEMS_INT1_PIN_NUM
-  /* Initialize MEMS INT1 pin back to it's default state after I3C disable / I2C enable */
-  MEMS_INT1_Init();
-#endif
 
   /* Sensor Fusion API initialization function */
   MotionFX_manager_init();
@@ -317,23 +269,16 @@ static void MX_DataLogFusion_Init(void)
 static void MX_DataLogFusion_Process(void)
 {
 
-  if (MagCalRequest == 1U)
-  {
-    MagCalRequest = 0;
+   /* Reset magnetometer calibration value*/
+   MagCalStatus = 0;
+   MagOffset.x = 0;
+   MagOffset.y = 0;
+   MagOffset.z = 0;
 
-    /* Reset magnetometer calibration value*/
-    MagCalStatus = 0;
-    MagOffset.x = 0;
-    MagOffset.y = 0;
-    MagOffset.z = 0;
-
-    /* Enable magnetometer calibration */
-    MotionFX_manager_MagCal_start(ALGO_PERIOD);
-  }
+   /* Enable magnetometer calibration */
+   MotionFX_manager_MagCal_start(ALGO_PERIOD);
 
 
-
-   /* Acquire data from enabled sensors and fill Msg stream */
    RTC_Handler();
    Accelero_Sensor_Handler();
    Gyro_Sensor_Handler();
@@ -344,7 +289,6 @@ static void MX_DataLogFusion_Process(void)
 
    /* Sensor Fusion specific part */
    FX_Data_Handler();
-
 
 }
 
@@ -361,6 +305,20 @@ static void Init_Sensors(void)
   BSP_SENSOR_PRESS_Init();
   BSP_SENSOR_TEMP_Init();
   BSP_SENSOR_HUM_Init();
+
+  /* Set accelerometer:
+   *   - ODR >= 100Hz
+   *   - FS   = <-2g, 2g>
+   */
+  BSP_SENSOR_ACC_SetOutputDataRate(100.0f);
+  BSP_SENSOR_ACC_SetFullScale(2);
+
+  /* Set magnetometer:
+   *   - ODR >= 100Hz
+   *   - FS   = 50Gauss (always) // TODO: Valid for all magnetometers?
+   */
+  BSP_SENSOR_MAG_SetOutputDataRate(100.0f);
+
 
   BSP_SENSOR_ACC_Enable();
   BSP_SENSOR_GYR_Enable();
@@ -405,7 +363,7 @@ static void RTC_Handler()
  * @param  Msg the Sensor Fusion data part of the stream
  * @retval None
  */
-static void FX_Data_Handler(TMsg *Msg)
+static void FX_Data_Handler()
 {
   uint32_t elapsed_time_us = 0U;
   MFX_input_t data_in;
@@ -438,24 +396,19 @@ static void FX_Data_Handler(TMsg *Msg)
 
   if (Enabled6X == 1U)
   {
-//    (void)memcpy(&Msg->Data[55], (void *)pdata_out->quaternion_6X, 4U * sizeof(float));
-//    (void)memcpy(&Msg->Data[71], (void *)pdata_out->rotation_6X, 3U * sizeof(float));
-//    (void)memcpy(&Msg->Data[83], (void *)pdata_out->gravity_6X, 3U * sizeof(float));
-//    (void)memcpy(&Msg->Data[95], (void *)pdata_out->linear_acceleration_6X, 3U * sizeof(float));
-//
-//    (void)memcpy(&Msg->Data[107], (void *) & (pdata_out->heading_6X), sizeof(float));
-//    (void)memcpy(&Msg->Data[111], (void *) & (pdata_out->headingErr_6X), sizeof(float));
+	  q_axes.AXIS_Z = data_out.rotation_6X[0];
+	  q_axes.AXIS_Y = data_out.rotation_6X[1];
+	  q_axes.AXIS_X = data_out.rotation_6X[2];
   }
   else
   {
-//    (void)memcpy(&Msg->Data[55], (void *)pdata_out->quaternion_9X, 4U * sizeof(float));
-//    (void)memcpy(&Msg->Data[71], (void *)pdata_out->rotation_9X, 3U * sizeof(float));
-//    (void)memcpy(&Msg->Data[83], (void *)pdata_out->gravity_9X, 3U * sizeof(float));
-//    (void)memcpy(&Msg->Data[95], (void *)pdata_out->linear_acceleration_9X, 3U * sizeof(float));
-//
-//    (void)memcpy(&Msg->Data[107], (void *) & (pdata_out->heading_9X), sizeof(float));
-//    (void)memcpy(&Msg->Data[111], (void *) & (pdata_out->headingErr_9X), sizeof(float));
+	  q_axes.AXIS_Z = data_out.rotation_9X[0];
+	  q_axes.AXIS_Y = data_out.rotation_9X[1];
+	  q_axes.AXIS_X = data_out.rotation_9X[2];
   }
+
+	printf("qx: %ld, qy: %ld, qz: %ld\r\n", q_axes.AXIS_X, q_axes.AXIS_Y,
+			q_axes.AXIS_Z);
 
   UNUSED(elapsed_time_us);
 
@@ -493,19 +446,17 @@ static void Gyro_Sensor_Handler() {
  * @brief  Handles the MAG axes data getting/sending
  * @retval None
  */
-static void Magneto_Sensor_Handler(TMsg *Msg)
+static void Magneto_Sensor_Handler()
 {
   float ans_float;
   MFX_MagCal_input_t mag_data_in;
   MFX_MagCal_output_t mag_data_out;
 
-  if ((SensorsEnabled & MAGNETIC_SENSOR) == MAGNETIC_SENSOR)
-  {
-    BSP_SENSOR_MAG_GetAxes(&MagValue);
+  BSP_SENSOR_MAG_GetAxes(&MagValue);
 
-    if (MagCalStatus == 0U)
-    {
-      mag_data_in.mag[0] = (float)MagValue.x * FROM_MGAUSS_TO_UT50;
+  if (MagCalStatus == 0U)
+  {
+	  mag_data_in.mag[0] = (float)MagValue.x * FROM_MGAUSS_TO_UT50;
       mag_data_in.mag[1] = (float)MagValue.y * FROM_MGAUSS_TO_UT50;
       mag_data_in.mag[2] = (float)MagValue.z * FROM_MGAUSS_TO_UT50;
 
@@ -534,10 +485,12 @@ static void Magneto_Sensor_Handler(TMsg *Msg)
     MagValue.y = (int32_t)(MagValue.y - MagOffset.y);
     MagValue.z = (int32_t)(MagValue.z - MagOffset.z);
 
-    Serialize_s32(&Msg->Data[43], MagValue.x, 4);
-    Serialize_s32(&Msg->Data[47], MagValue.y, 4);
-    Serialize_s32(&Msg->Data[51], MagValue.z, 4);
-  }
+	m_axes.AXIS_X = MagValue.x;
+	m_axes.AXIS_Y = MagValue.y;
+	m_axes.AXIS_Z = MagValue.z;
+	printf("mx: %ld, my: %ld, mz: %ld\r\n", m_axes.AXIS_X, m_axes.AXIS_Y,
+			m_axes.AXIS_Z);
+
 }
 
 /**

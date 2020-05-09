@@ -82,8 +82,8 @@ void MotionFX_manager_init(void)
 
   MotionFX_setKnobs(ipKnobs);
 
-  MotionFX_enable_6X(MFX_ENGINE_DISABLE);
-  MotionFX_enable_9X(MFX_ENGINE_DISABLE);
+  MotionFX_enable_6X(MFX_ENGINE_ENABLE);
+  MotionFX_enable_9X(MFX_ENGINE_ENABLE);
 }
 
 /**
