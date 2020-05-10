@@ -230,10 +230,6 @@ static void MX_DataLogFusion_Init(void)
   /* Sensor Fusion API initialization function */
   MotionFX_manager_init();
 
-  /* OPTIONAL */
-  /* Get library version */
-  MotionFX_manager_get_version(lib_version, &lib_version_len);
-
   /* LED Blink */
   BSP_LED_On(LED2);
   HAL_Delay(500);
@@ -313,11 +309,11 @@ static void Init_Sensors(void)
   BSP_SENSOR_ACC_SetOutputDataRate(100.0f);
   BSP_SENSOR_ACC_SetFullScale(2);
 
-  /* Set magnetometer:
-   *   - ODR >= 100Hz
-   *   - FS   = 50Gauss (always) // TODO: Valid for all magnetometers?
-   */
-  BSP_SENSOR_MAG_SetOutputDataRate(100.0f);
+//  /* Set magnetometer:
+//   *   - ODR >= 100Hz
+//   *   - FS   = 50Gauss (always) // TODO: Valid for all magnetometers?
+//   */
+//  BSP_SENSOR_MAG_SetOutputDataRate(100.0f);
 
 
   BSP_SENSOR_ACC_Enable();
@@ -545,39 +541,6 @@ static void TIM_Config(uint32_t Freq)
   }
 }
 
-#ifdef BSP_IP_MEMS_INT1_PIN_NUM
-/**
- * @brief  Force MEMS INT1 pin low
- * @param  None
- * @retval None
- */
-static void MEMS_INT1_Force_Low(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-  GPIO_InitStruct.Pin = BSP_IP_MEMS_INT1_PIN_NUM;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BSP_IP_MEMS_INT1_GPIOX, &GPIO_InitStruct);
-
-  HAL_GPIO_WritePin(BSP_IP_MEMS_INT1_GPIOX, BSP_IP_MEMS_INT1_PIN_NUM, GPIO_PIN_RESET);
-}
-
-/**
- * @brief  Configure MEMS INT1 pin to the default state
- * @param  None
- * @retval None
- */
-static void MEMS_INT1_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-  GPIO_InitStruct.Pin = BSP_IP_MEMS_INT1_PIN_NUM;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BSP_IP_MEMS_INT1_GPIOX, &GPIO_InitStruct);
-}
-#endif
 
 /**
  * @brief  Start counting clock cycles

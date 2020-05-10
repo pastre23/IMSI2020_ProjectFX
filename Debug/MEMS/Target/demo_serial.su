@@ -1,4 +1,0 @@
-demo_serial.c:62:6:BUILD_REPLY_HEADER	16	static
-demo_serial.c:74:6:INIT_STREAMING_HEADER	16	static
-demo_serial.c:87:6:INIT_STREAMING_MSG	24	static
-demo_serial.c:107:5:HandleMSG	96	static
