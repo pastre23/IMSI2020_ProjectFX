@@ -1,22 +1,10 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.h
-  * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+* @file main.h
+* @author IMSI2020
+* @date 09 05 2020
+* @version: 1.0
+*/
 /* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -34,6 +22,7 @@ extern "C" {
 #include "stm32f4xx_nucleo.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "gatt_db.h"
 
 /* USER CODE END Includes */
 
@@ -76,6 +65,30 @@ void Error_Handler(void);
 void   MX_TIM3_Init(void);
 /* USER CODE BEGIN Private defines */
 
+#define BUFFER_LEN 1000		/*!< Dimensione del buffer circolare: MemBuffer */
+
+/**
+  * @brief Record MEMS
+  *
+  * Struttura dati contenente i valori acquisiti dai sensori MEMS e da inviare
+  * all'applicazione tramite BLE.
+  */
+typedef struct {
+	int32_t temperature;	/*!< Temperatura ([0;60] +- 1) [°C] */
+	int32_t humidity;		/*!< Umidità ([0;100] +- 5) [% rH] */
+	int32_t pressure;		/*!< Pressione ([260;1260] +- 1) [hPa] */
+	int32_t exten1;		/*!< Estensimetro ADC ch10*/
+	int32_t exten2;		/*!< Estensimetro ADC ch11*/
+	AxesRaw_t x_axes;		/*!< Accelerometro ([-2g;+2g] +- 40) [mg] */
+	AxesRaw_t q_axes;		/*!< Quaternioni*/
+} MEMS_Record_t;
+
+/**
+  * @brief Buffer circolare MEMS
+  *
+  * Buffer circolare di elementi MEMS_Record_t di dimensione BUFFER_LEN.
+  */
+typedef MEMS_Record_t MEMS_buffer_t[BUFFER_LEN];
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

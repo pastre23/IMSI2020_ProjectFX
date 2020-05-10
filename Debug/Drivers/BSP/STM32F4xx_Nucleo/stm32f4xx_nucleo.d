@@ -42,7 +42,10 @@ Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo.o: \
  ../Core/Inc/main.h ../BlueNRG_MS/Target/hci_tl_interface.h \
  ../Core/Inc/stm32f4xx_nucleo_bus.h ../Core/Inc/stm32f4xx_nucleo_conf.h \
  ../Core/Inc/stm32f4xx_nucleo_errno.h \
- ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo.h
+ ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo.h \
+ ../BlueNRG_MS/App/gatt_db.h \
+ ../Middlewares/ST/BlueNRG-MS/includes/bluenrg_def.h \
+ ../Middlewares/ST/BlueNRG-MS/includes/bluenrg_types.h
 
 ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo.h:
 
@@ -133,3 +136,9 @@ Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo.o: \
 ../Core/Inc/stm32f4xx_nucleo_errno.h:
 
 ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo.h:
+
+../BlueNRG_MS/App/gatt_db.h:
+
+../Middlewares/ST/BlueNRG-MS/includes/bluenrg_def.h:
+
+../Middlewares/ST/BlueNRG-MS/includes/bluenrg_types.h:

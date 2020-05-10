@@ -43,6 +43,9 @@ MEMS/Target/motion_fx_manager.o: ../MEMS/Target/motion_fx_manager.c \
  ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo.h \
  ../Core/Inc/stm32f4xx_nucleo_conf.h \
  ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo_errno.h \
+ ../BlueNRG_MS/App/gatt_db.h \
+ ../Middlewares/ST/BlueNRG-MS/includes/bluenrg_def.h \
+ ../Middlewares/ST/BlueNRG-MS/includes/bluenrg_types.h \
  ../MEMS/Target/iks01a2_mems_control_ex.h \
  ../Drivers/BSP/IKS01A2/iks01a2_motion_sensors.h \
  ../MEMS/Target/iks01a2_conf.h \
@@ -154,6 +157,12 @@ MEMS/Target/motion_fx_manager.o: ../MEMS/Target/motion_fx_manager.c \
 ../Core/Inc/stm32f4xx_nucleo_conf.h:
 
 ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo_errno.h:
+
+../BlueNRG_MS/App/gatt_db.h:
+
+../Middlewares/ST/BlueNRG-MS/includes/bluenrg_def.h:
+
+../Middlewares/ST/BlueNRG-MS/includes/bluenrg_types.h:
 
 ../MEMS/Target/iks01a2_mems_control_ex.h:
 

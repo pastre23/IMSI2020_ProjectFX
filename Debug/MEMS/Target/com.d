@@ -41,6 +41,9 @@ MEMS/Target/com.o: ../MEMS/Target/com.c ../MEMS/Target/com.h \
  ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo.h \
  ../Core/Inc/stm32f4xx_nucleo_conf.h \
  ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo_errno.h \
+ ../BlueNRG_MS/App/gatt_db.h \
+ ../Middlewares/ST/BlueNRG-MS/includes/bluenrg_def.h \
+ ../Middlewares/ST/BlueNRG-MS/includes/bluenrg_types.h \
  ../MEMS/Target/serial_protocol.h ../MEMS/Target/bsp_ip_conf.h
 
 ../MEMS/Target/com.h:
@@ -132,6 +135,12 @@ MEMS/Target/com.o: ../MEMS/Target/com.c ../MEMS/Target/com.h \
 ../Core/Inc/stm32f4xx_nucleo_conf.h:
 
 ../Drivers/BSP/STM32F4xx_Nucleo/stm32f4xx_nucleo_errno.h:
+
+../BlueNRG_MS/App/gatt_db.h:
+
+../Middlewares/ST/BlueNRG-MS/includes/bluenrg_def.h:
+
+../Middlewares/ST/BlueNRG-MS/includes/bluenrg_types.h:
 
 ../MEMS/Target/serial_protocol.h:
 

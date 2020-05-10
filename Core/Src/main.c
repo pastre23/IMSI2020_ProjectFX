@@ -1,21 +1,61 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+* @file main.c
+* @author IMSI2020
+* @date 09 05 2020
+* @version: 1.0
+*/
+
+/**
+* @mainpage
+* @brief Demo Acquisizione e Invio dati Soft Trasducers.
+*
+* La seguente applicazione si prefigge il compito di acquisire, tramite l'expansion board MEMS della STMicroelectronics,
+* le grandezze di interesse per il telemonitoraggio di una struttura civile.
+* Le grandezze acquisite ed elaborate verranno inviate ad un'opportuna applicazione tramite protocollo Bluetooth, sfruttando
+* l'expansion board BlueNRG della STMicroelectronics.
+* Per acquisire le deformazione della fibra si utilizzeranno due estensimetri esterni collegati ai canali CH10 e CH11 dell'ADC.
+*
+*
+* <h2> MEMS </h2>
+* L'expansion board utilizzata per l'acquisizione dei dati (ambientali e motion) è la IKS01A2 della STMicroelectronics;
+* nello specifico i sensori utilizzati per l'acquisizione sono:
+*
+* - Accelerometro LSM6DSL: Sensivity [0.061] [mg/LSB], Range [-2g;2g], Accuracy [+- 40.000] [mg];
+* - Magnetometro LSM303AGR: Sensivity [-1.60; +1.60] [mgauss/LSB], Range [-49.152; 49.152] [gauss], Accuracy [+- 60.00] [mgauss];
+* - Sensore di temperatura HTS221: Sensivity [0.016] [°C/LSB], Range [0.000;60.000] [°C], Accuracy [+- 1.000] [°C];
+* - Sensore di umidità HTS221: Sensivity [0.004] [% rH/LSB], Range [0.000;100.000] [% rH], Accuracy [+- 5.000] [% rH];
+* - Sensore di pressione LPS22HB: Sensivity [0.0002] [hPa/LSB], Range [260.0000;1260.0000] [hPa], Accuracy [+- 1.0000] [hPa];
+* - ADC: ENOB 10.3, Sensivity [0.003] [V], Range [0.000;3.300] [V], Accuracy [+- 0.012] [V];
+*
+* I dati prelevati dal magnetometro e accelerometro vengono opportunamente elaborati tramite le librerie MotionEC e MotionMC
+* generando i valori del quaternione che verranno sfruttati per ricavare gli angoli di Eulero (beccheggio, imbadardata e rollio).
+*
+*
+* <h3> Accelerometro </h3>
+*
+* <h3> Data Fusion </h3>
+*
+* <h2> BlueNRG </h2>
+*
+*
+* list:
+* - num 1
+* - num 2
+*
+* list:
+* -# num1
+* -# num2
+*
+* @code
+*
+* @endcode
+*
+* <h2> Riferimenti bibliografici utili </h2>
+*
+*
+*/
+
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -54,6 +94,21 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
+/////VARIABILI PONTE/////
+extern float mems_pressure;
+extern float mems_humidity;
+extern float mems_temperature;
+extern AxesRaw_t x_axes;
+extern AxesRaw_t g_axes;
+extern AxesRaw_t m_axes;
+extern AxesRaw_t q_axes;
+/////////////////////////
+
+MEMS_buffer_t memBuffer;  /*!< Buffer circolare di dati da inviare all'applicazione via BLE. */
+uint16_t MEMS_idx = 0; /*!< Indice per gestire il buffer circolare memBuffer. */
+
+uint32_t adcValue[2]; /*!< Variabili per contenere i valori catturati dall'ADC. */
+
 
 /* USER CODE END PV */
 
@@ -108,10 +163,14 @@ int main(void)
   MX_CRC_Init();
   MX_RTC_Init();
   MX_TIM2_Init();
-  MX_BlueNRG_MS_Init();
-  MX_MEMS_Init();
+  MX_BlueNRG_MS_Init(); //Inizializzazione della expansion board BlueNRG.
+  MX_MEMS_Init(); //Inizializzazione dei sensori MEMS.
   /* USER CODE BEGIN 2 */
+  //Avvio il timer2 che servirà da trigger per avviare la conversione ADC.
+  HAL_TIM_Base_Start(&htim2);
 
+  //Avvio l'ADC che sfrutterà il DMA per trasferire i dati nelle variabili adcValue.
+  HAL_ADC_Start_DMA(&hadc1, adcValue, 2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -119,9 +178,9 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	  MX_MEMS_Process(); //Processo che acquisisce i valori dai sensori MEMS
+	  MX_BlueNRG_MS_Process(); //Processo che provvede all'invio dei dati acquisiti tramite BLE
 
-  MX_BlueNRG_MS_Process();
-  MX_MEMS_Process();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -477,7 +536,33 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+/**
+  * @brief ADC-DMA Callback
+  *
+  * Questa callback viene invocata ogni volta che il DMA2 ha terminato il trasferimento dalla periferica (ADC) alla memoria.
+  * Al verificarsi di questo evento vengono elaborati i valori acquisiti dell'ADC e viene creato un pacchetto di dati (ADC e sensori MEMS)
+  * che verrà inserito in un buffer circolare per poi essere spedito via BLE.
+  *
+  * @param [in] hadc : Handler per l'ADC
+  * @retval None
+  */
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	//Trasformazioen dei valori acquisiti dall'ADC1
+	float exten1 = ((2 / 3.3) * 0.0001) * adcValue[0] - 0.0001; //((2 / 3.3)) * adcValue[0] - 1
+	float exten2 = ((2 / 3.3) * 0.0001) * adcValue[1] - 0.0001;
 
+	//Passaggio dei parametri alla struttura dati che verrà inviata tramite BLE
+	memBuffer[MEMS_idx].temperature = (int16_t)(mems_temperature * 10);
+	memBuffer[MEMS_idx].humidity = (int16_t)(mems_humidity * 10);
+	memBuffer[MEMS_idx].pressure = (int32_t)(mems_pressure *100);
+	memBuffer[MEMS_idx].exten1 = exten1*10000; //exten1
+	memBuffer[MEMS_idx].exten2 = exten2*10000;
+	memBuffer[MEMS_idx].x_axes = x_axes;
+	memBuffer[MEMS_idx].q_axes = q_axes;
+
+	MEMS_idx = (MEMS_idx+1)%1000; //aggiornamento indice del buffer circolare
+}
 /* USER CODE END 4 */
 
 /**

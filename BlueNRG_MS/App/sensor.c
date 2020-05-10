@@ -67,9 +67,9 @@ void Set_DeviceConnectable(void)
   uint8_t ret;
   const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,SENSOR_DEMO_NAME}; 
     
-  uint8_t manuf_data[26] = {
+  uint8_t manuf_data[28] = {
     2,0x0A,0x00, /* 0 dBm */  // Trasmission Power
-    8,0x09,SENSOR_DEMO_NAME,  // Complete Name
+    10,0x09,SENSOR_DEMO_NAME,  // Complete Name
     13,0xFF,0x01, /* SKD version */
     0x02,
     0x00,
@@ -84,7 +84,8 @@ void Set_DeviceConnectable(void)
     bdaddr[0]  /* BLE MAC stop */
   };
   
-  manuf_data[18] |= 0x01; /* Sensor Fusion */
+  manuf_data[20] |= 0x01; /* Sensor Fusion */
+  manuf_data[19] |= 0x08; /* Humidity Sensor*/
   
   hci_le_set_scan_resp_data(0, NULL);
   
@@ -95,7 +96,7 @@ void Set_DeviceConnectable(void)
                                  STATIC_RANDOM_ADDR, NO_WHITE_LIST_USE,
                                  sizeof(local_name), local_name, 0, NULL, 0, 0); 
   
-  aci_gap_update_adv_data(26, manuf_data);
+  aci_gap_update_adv_data(28, manuf_data);
   
   if(ret != BLE_STATUS_SUCCESS)
   {
